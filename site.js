@@ -9,23 +9,47 @@ document.querySelectorAll(".reveal").forEach((element) => observer.observe(eleme
 
 const form = document.getElementById("lead-form");
 const result = document.getElementById("result");
-const summary = document.getElementById("summary");
+const submitButton = form.querySelector('button[type="submit"]');
+const formNote = form.querySelector(".form-note");
+const endpoint =
+  "https://script.google.com/macros/s/AKfycbyuHup5uveR-zdFJ367Ti8v2c7rYoOvaEB2pvo6HV0CZyTjd4rx5Na0q7SbujvZXrak/exec";
 
-form.addEventListener("submit", (event) => {
+form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = new FormData(form);
-  summary.textContent = [
-    `お名前：${data.get("name")}`,
-    `電話番号：${data.get("phone")}`,
-    `船がある場所：${data.get("place")}`,
-    `船の種類：${data.get("type")}`,
-    `状態・相談内容：${data.get("detail") || "未入力"}`,
-  ].join("\n");
-  result.classList.add("show");
-  result.scrollIntoView({ behavior: "smooth", block: "nearest" });
-});
+  const query = new URLSearchParams(window.location.search);
+  const adKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "gclid"];
+  const adParams = adKeys
+    .filter((key) => query.get(key))
+    .map((key) => `${key}=${query.get(key)}`)
+    .join("&");
 
-document.getElementById("copy").addEventListener("click", async (event) => {
-  await navigator.clipboard.writeText(summary.textContent);
-  event.currentTarget.textContent = "コピーしました ✓";
+  data.set("source_url", window.location.href);
+  data.set("ad_params", adParams);
+  submitButton.disabled = true;
+  submitButton.textContent = "送信しています…";
+  result.classList.remove("show");
+  formNote.textContent = "入力内容を安全に送信しています。画面を閉じずにお待ちください。";
+
+  try {
+    await fetch(endpoint, {
+      method: "POST",
+      mode: "no-cors",
+      body: new URLSearchParams(data),
+    });
+    form.reset();
+    result.innerHTML =
+      '<b>お問い合わせを受け付けました</b><p>内容を確認のうえ、担当者からご連絡します。お急ぎの場合は <a href="tel:07085083995">070-8508-3995</a> へお電話ください。</p>';
+    result.classList.add("show");
+    formNote.textContent = "送信完了しました。自動受付後、担当者が内容を確認します。";
+    result.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (error) {
+    result.innerHTML =
+      '<b>送信できませんでした</b><p>通信状況をご確認のうえ再度お試しいただくか、<a href="tel:07085083995">070-8508-3995</a> へお電話ください。</p>';
+    result.classList.add("show");
+    formNote.textContent = "入力内容は送信されていません。";
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = "無料見積を依頼する →";
+  }
 });
