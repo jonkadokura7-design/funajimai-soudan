@@ -14,6 +14,23 @@ const formNote = form.querySelector(".form-note");
 const endpoint =
   "https://script.google.com/macros/s/AKfycbyuHup5uveR-zdFJ367Ti8v2c7rYoOvaEB2pvo6HV0CZyTjd4rx5Na0q7SbujvZXrak/exec";
 
+const normalizePhoneNumber = (value) => {
+  let digits = String(value || "")
+    .replace(/[０-９]/g, (digit) => String.fromCharCode(digit.charCodeAt(0) - 0xfee0))
+    .replace(/[^0-9+]/g, "");
+
+  if (digits.startsWith("+81")) digits = `0${digits.slice(3)}`;
+  if (!digits.startsWith("0") && digits.length >= 9 && digits.length <= 10) {
+    digits = `0${digits}`;
+  }
+
+  if (/^0[789]0\d{8}$/.test(digits)) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  }
+
+  return digits;
+};
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = new FormData(form);
@@ -24,6 +41,7 @@ form.addEventListener("submit", async (event) => {
     .map((key) => `${key}=${query.get(key)}`)
     .join("&");
 
+  data.set("phone", normalizePhoneNumber(data.get("phone")));
   data.set("source_url", window.location.href);
   data.set("ad_params", adParams);
   submitButton.disabled = true;
